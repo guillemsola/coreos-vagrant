@@ -76,6 +76,8 @@ Vagrant.configure("2") do |config|
     config.vm.define vm_name = "%s-%02d" % [$instance_name_prefix, i] do |config|
       config.vm.hostname = vm_name
 
+      config.vm.provision :file, source: "docker-images/cntlm.tar", destination: "/tmp/cntlm.tar"
+
       if $enable_serial_logging
         logdir = File.join(File.dirname(__FILE__), "log")
         FileUtils.mkdir_p(logdir)
