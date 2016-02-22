@@ -1,0 +1,48 @@
+#cloud-config
+
+write_files:
+    - path: /etc/environment
+      permissions: 0644
+      content: |
+        http_proxy=http://192.168.1.78.3128
+        https_proxy=$http_proxy
+coreos:
+  units:
+    - name: docker-tcp.socket
+      command: start
+      enable: true
+      content: |
+        [Unit]
+        Description=Docker Socket for the API
+
+        [Socket]
+        ListenStream=2375
+        BindIPv6Only=both
+        Service=docker.service
+
+        [Install]
+        WantedBy=sockets.target
+    - name: docker.service
+      drop-ins:
+        - name: 20-http-proxy.conf
+          content: |
+            [Service]
+            #Environment="HTTP_PROXY=http://localhost:3128"
+      command: restart
+    - name: "docker-cntlm.service"
+      command: "start"
+      content: |
+        [Unit]
+        Description=Boot cntlm container
+        Author=Guillem
+        After=docker.service
+
+        [Service]
+        TimeoutStartSec=0
+        KillMode=none
+        EnvironmentFile=/etc/environment
+        ExecStartPre=-/usr/bin/docker kill cntlm-proxy
+        ExecStartPre=-/usr/bin/docker rm cntlm-proxy
+        ExecStartPre=/usr/bin/docker load -i /tmp/cntlm.tar
+        #ExecStart=/usr/bin/docker run --name some-busybox%i -p ${COREOS_PUBLIC_IPV4}:%i:80 busybox -D FOREGROUND
+        ExecStart=/usr/bin/docker run --name cntlm-proxy -p 3128:3128 btrepp/cntlm user.name domain NTVLMv2Hash upstream_proxy:port
